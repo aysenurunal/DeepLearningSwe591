@@ -25,17 +25,34 @@ class ConvAutoencoder(nn.Module):
             nn.LeakyReLU()
         )
         
-        # Decoder (ConvTranspose)
+        # Fully Connected Bottleneck
+        self.fc_enc = nn.Linear(32 * 7 * 7, 32)
+
+        # Fully Connected Decoder
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(32, 16, 3, stride=2, padding=1, output_padding=1),
+            nn.Linear(32, 128),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(16, 1, 3, stride=2, padding=1, output_padding=1),
+
+            nn.Linear(128, 28 * 28),
             nn.Sigmoid()
         )
     
     def forward(self, x):
-        z = self.encoder(x)
+        # Conv encoder
+        x = self.encoder(x)
+
+        # Flatten
+        x = x.view(x.size(0), -1)
+
+        # Latent vector
+        z = self.fc_enc(x)
+
+        # FC decoder
         x_hat = self.decoder(z)
+
+        # Reshape back to image
+        x_hat = x_hat.view(x.size(0), 1, 28, 28)
+
         return x_hat
     
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -151,6 +168,8 @@ with torch.no_grad():
         z = model.encoder(x)
         z = z.view(z.size(0), -1)
         
+        z = model.fc_enc(z)
+
         latent_vectors.append(z.cpu())
         labels.append(y)
 

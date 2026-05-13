@@ -53,7 +53,6 @@ epochs = 10
 
 for epoch in range(epochs):
     model.train()
-    total_loss = 0
     
     for x, _ in train_loader:
         x = x.to(device)
@@ -64,23 +63,40 @@ for epoch in range(epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        
-        total_loss += loss.item()
-    
-    avg_train_loss = total_loss/len(train_loader)
-    train_losses.append(avg_train_loss)
 
     model.eval()
+
+    train_loss = 0
+    train_samples = 0
+
+    with torch.no_grad():
+        for x, _ in train_loader:
+            x = x.to(device)
+
+            x_hat = model(x)
+            loss = criterion(x_hat, x)
+
+            batch_size = x.size(0)
+            train_loss += loss.item() * batch_size
+            train_samples += batch_size
+
+    avg_train_loss = train_loss / train_samples
+    train_losses.append(avg_train_loss)
+
     test_loss = 0
+    test_samples = 0
 
     with torch.no_grad():
         for x, _ in test_loader:
             x = x.to(device)
             x_hat = model(x)
             loss = criterion(x_hat, x)
-            test_loss += loss.item()
+
+            batch_size = x.size(0)
+            test_loss += loss.item() * batch_size
+            test_samples += batch_size
     
-    avg_test_loss = test_loss / len(test_loader)
+    avg_test_loss = test_loss / test_samples
     test_losses.append(avg_test_loss)
 
     print(f"Epoch {epoch+1}, Loss: {avg_train_loss:.4f}, Test Loss:{avg_test_loss:.4f}")
